@@ -70,7 +70,49 @@ bool TrimeshFace::intersectLocal( const ray& r, isect& i ) const
     // const Vec3d& b = parent->vertices[ids[1]];
     // const Vec3d& c = parent->vertices[ids[2]];
 
-    return false;
+    Vec3d p = r.getPosition();
+    // Rayの位置ベクトルpを取得
+
+    Vec3d d = r.getDirection();
+    // Rayの方向ベクトルdを取得
+
+    Vec3d& alpha = parent->vertices[ids[0]];
+    // 三角形の頂点alphaを取得
+
+    Vec3d& beta = parent->vertices[ids[1]];
+    // 三角形の頂点betaを取得
+
+    Vec3d& gamma = parent->vertices[ids[2]];
+    // 三角形の頂点gammaを取得
+
+    Vec3d normal = ((beta - alpha) ^ (gamma - alpha)); // 平面の法線
+
+    normal.normalize(); // 正規化
+
+    double t;// Rayの媒介変数t
+    /* tを求める計算を自分で書こう */
+    t = ((normal * alpha) - (normal * p)) / (normal * d);
+
+
+    if (t < RAY_EPSILON)return false;// tがRAY_EPSILONより小さい場合は平面と交差しない
+
+    Vec3d Q = r.at(t);// 交点の位置ベクトル
+    /* 交点が三角形の内部かを判定する部分を自分で書こう */
+    Vec3d v1 = (beta - alpha) ^ (Q - alpha);
+    v1.normalize();
+
+    Vec3d v2 = (gamma - beta) ^ (Q - beta);
+    v2.normalize();
+
+    Vec3d v3 = (alpha - gamma) ^ (Q - gamma);
+    v3.normalize();
+    if (v1 * v2 < 0 || v2 * v3 < 0)return false;
+
+    i.obj = this;
+    i.t = t;
+    i.N = normal;
+
+    return true;
 
 }
 
