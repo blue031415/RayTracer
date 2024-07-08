@@ -11,6 +11,7 @@
 #include "parser/Parser.h"
 
 #include "ui/TraceUI.h"
+#include "ui/GraphicalUI.h"
 #include <cmath>
 #include <algorithm>
 
@@ -26,6 +27,7 @@ using namespace std;
 // in TraceGLWindow, for example.
 bool debugMode = false;
 
+
 // Trace a top-level ray through normalized window coordinates (x,y)
 // through the projection plane, and out into the scene.  All we do is
 // enter the main ray-tracing method, getting things started by plugging
@@ -40,6 +42,69 @@ Vec3d RayTracer::trace( double x, double y )
     scene->getCamera().rayThrough( x,y,r );
 	Vec3d ret = traceRay( r, Vec3d(1.0,1.0,1.0), 0 );
 	ret.clamp();
+	int value = GraphicalUI().m_bsp_enabledCheckButton->value();
+	if (value) {
+		printf("enable");
+		double gridsize = 0.5; //スーパーサンプリングする領域サイズ（1画素=1）
+		double x_right = x + gridsize / double(buffer_width);
+		if (x_right > 1) x_right = 1;
+		double x_left = x - gridsize / double(buffer_width);
+		if (x_left < 0) x_left = 0;
+		double y_up = y + gridsize / double(buffer_height);
+		if (y_up > 1) y_up = 1;
+		double y_down = y - gridsize / double(buffer_height);
+		if (y_down < 0) y_down = 0;
+
+		//右上へのレイ
+		ray AA1(Vec3d(0, 0, 0), Vec3d(0, 0, 0), ray::VISIBILITY);
+		scene->getCamera().rayThrough(x_right, y_up, AA1);
+		Vec3d retAA1 = traceRay(AA1, Vec3d(1.0, 1.0, 1.0), 0);
+		retAA1.clamp();
+
+		//右下
+		ray AA2(Vec3d(0, 0, 0), Vec3d(0, 0, 0), ray::VISIBILITY);
+		scene->getCamera().rayThrough(x_right, y_down, AA2);
+		Vec3d retAA2 = traceRay(AA2, Vec3d(1.0, 1.0, 1.0), 0);
+		retAA2.clamp();
+
+		//左上
+		ray AA3(Vec3d(0, 0, 0), Vec3d(0, 0, 0), ray::VISIBILITY);
+		scene->getCamera().rayThrough(x_left, y_up, AA3);
+		Vec3d retAA3 = traceRay(AA3, Vec3d(1.0, 1.0, 1.0), 0);
+		retAA3.clamp();
+
+		//左下
+		ray AA4(Vec3d(0, 0, 0), Vec3d(0, 0, 0), ray::VISIBILITY);
+		scene->getCamera().rayThrough(x_left, y_down, AA4);
+		Vec3d retAA4 = traceRay(AA4, Vec3d(1.0, 1.0, 1.0), 0);
+		retAA4.clamp();
+
+		//右
+		ray AA5(Vec3d(0, 0, 0), Vec3d(0, 0, 0), ray::VISIBILITY);
+		scene->getCamera().rayThrough(x_right, y, AA5);
+		Vec3d retAA5 = traceRay(AA5, Vec3d(1.0, 1.0, 1.0), 0);
+		retAA5.clamp();
+
+		//左
+		ray AA6(Vec3d(0, 0, 0), Vec3d(0, 0, 0), ray::VISIBILITY);
+		scene->getCamera().rayThrough(x_left, y, AA6);
+		Vec3d retAA6 = traceRay(AA6, Vec3d(1.0, 1.0, 1.0), 0);
+		retAA6.clamp();
+
+		//上
+		ray AA7(Vec3d(0, 0, 0), Vec3d(0, 0, 0), ray::VISIBILITY);
+		scene->getCamera().rayThrough(x, y_up, AA7);
+		Vec3d retAA7 = traceRay(AA7, Vec3d(1.0, 1.0, 1.0), 0);
+		retAA7.clamp();
+
+		//下
+		ray AA8(Vec3d(0, 0, 0), Vec3d(0, 0, 0), ray::VISIBILITY);
+		scene->getCamera().rayThrough(x, y_down, AA8);
+		Vec3d retAA8 = traceRay(AA8, Vec3d(1.0, 1.0, 1.0), 0);
+		retAA8.clamp();
+
+		ret = (ret + retAA1 + retAA2 + retAA3 + retAA4 + retAA5 + retAA6 + retAA7 + retAA8) / 9;//平均をとる
+	}
 	return ret;
 }
 

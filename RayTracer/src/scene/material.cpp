@@ -101,7 +101,7 @@ Vec3d TextureMap::getMappedValue( const Vec2d& coord ) const
 
 
 
-    return Vec3d(1.0, 1.0, 1.0);
+    return getPixelAt(coord[0] * width, coord[1] * height);
 
 }
 
