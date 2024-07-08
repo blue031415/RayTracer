@@ -62,16 +62,64 @@ Vec3d RayTracer::traceRay( const ray& r,
 		// more steps: add in the contributions from reflected and refracted
 		// rays.
 
-		const Material& m = i.getMaterial();
+		const Material& m = i.getMaterial();// 交差した物体のパラメータ取得用
+		Vec3d ret = m.shade(scene, r, i);// 返り値の初期値にシェーディングの値を入れる
+		if (depth < traceUI->getDepth()) {// 再帰深度とスライダーの値を比較
+			Vec3d kr = m.kr(i);// 反射の係数
+			Vec3d kt = m.kt(i);// 透過の係数
+			Vec3d d = r.getDirection();
+			Vec3d norm = i.N;
 
-		return m.shade(scene, r, i);
+			if (d * i.N > 0.0) {
+				norm = -norm; // 物体内からのRayの場合
+			}
 
-	
+			// reflection
+			Vec3d reflect(0.0, 0.0, 0.0); // 光源から反射する鏡面光の値
+			Vec3d rd = d - 2 *(d * norm) * norm;
+
+			rd.normalize();
+			if (!(kr.iszero())) { // 反射係数が0かチェック
+				ray rr(r.at(i.t - RAY_EPSILON), rd, ray::REFLECTION);
+				reflect = traceRay(rr, thresh, depth + 1);// 深度を深めて再帰計算
+				ret += prod(kr, reflect);
+			}
+
+			// transmission
+			Vec3d transmit(0.0, 0.0, 0.0);// 屈折するRayの返り値
+			/* transmitの値を自分で計算しよう. ついでに全反射の場合の処理もしよう */	
+			double n1 = 1.0; // 空気の屈折率
+			double n2 = m.index(i); // 物体の屈折率
+			if (d * norm > 0.0) {
+				std::swap(n1, n2); // 内部から外部への屈折
+			}
+
+			double n = n1 / n2;
+			double cosI = -d * norm;
+			double sinT2 = n * n * (1.0 - cosI * cosI);
+
+			if (sinT2 > 1.0) { // 全反射の場合
+				if (!kr.iszero()) { // 反射係数が0でないか確認
+					ray rr(r.at(i.t - RAY_EPSILON), rd, ray::REFLECTION);
+					reflect = traceRay(rr, thresh, depth + 1); // 再帰計算
+					ret += prod(kr, reflect); // 全反射の場合はkrのみを考慮
+				}
+			}
+			else {
+				// 屈折光の計算
+				double cosT = sqrt(1.0 - sinT2);
+				Vec3d td = n * d + (n * cosI - cosT) * norm;
+				td.normalize();
+				ray tr(r.at(i.t + RAY_EPSILON), td, ray::REFRACTION);
+				transmit = traceRay(tr, thresh, depth + 1); // 再帰計算
+				ret += prod(kt, transmit);
+			}
+		}
+		return ret;
 	} else {
 		// No intersection.  This ray travels to infinity, so we color
 		// it according to the background color, which in this (simple) case
 		// is just black.
-
 		return Vec3d( 0.0, 0.0, 0.0 );
 	}
 }
